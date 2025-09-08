@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Magic Eye Stereogram Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Changa:wght@400;600;700&family=Fira+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cph-black: #020202;
+      --cph-white: #FCFCFC;
+      --cph-green: #D1FCC4;
+      --cph-orange: #E67740;
+      --cph-pink: #F5638F;
+      --cph-yellow: #FCD60E;
+      --cph-blue: #808CFB;
+      --cph-slime: #CFD60E;
+      --bg: var(--cph-black);
+      --panel: var(--cph-black);
+      --text: var(--cph-green);
+      --border: #2a2a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Fira Mono", monospace;
+    }
+
+    header {
+      padding: 24px 20px 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      font-family: "Changa", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) 1fr;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 4px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    label {
+      font-size: 14px;
+      color: var(--text);
+      flex: 1;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="file"],
+    textarea,
+    select,
+    input[type="checkbox"] {
+      width: 100%;
+      background: var(--cph-black);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      padding: 6px 12px;
+      outline: none;
+      font-family: "Fira Mono", monospace;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 40px;
+      max-height: 200px;
+    }
+
+    input[type="range"] {
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .muted {
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      background: transparent;
+      border: 2px solid var(--cph-orange);
+      border-radius: 4px;
+      color: var(--cph-orange);
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border: 2px solid var(--cph-slime);
+      color: var(--cph-slime);
+    }
+
+    button.primary {
+      background: transparent;
+      border: 2px solid var(--cph-orange);
+      color: var(--cph-orange);
+    }
+
+    button.primary:hover {
+      border: 2px solid var(--cph-slime);
+      color: var(--cph-slime);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      background: var(--cph-black);
+      cursor: pointer;
+    }
+
+    .sticky {
+      position: sticky;
+      top: 16px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .small {
+      font-size: 12px;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .slider-row span {
+      width: 120px;
+      text-align: right;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    footer {
+      padding: 12px 20px 24px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sticky {
+        position: static;
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .slider-row {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Magic Eye Stereogram Generator</h1>
+  <div class="muted">All in-browser. Set your text (emojis or ASCII art supported), color mix, shape, font, and sliders, then generate a 1200×800 or 7680×4320 PNG.</div>
+</header>
+<div class="app">
+  <section class="panel sticky" id="controls">
+    <div class="row">
+      <label for="text">Hidden Text (Top)</label>
+    </div>
+    <div class="row">
+      <input id="text" type="text" value="CBR💀" maxlength="48" aria-label="Top hidden text input" />
+    </div>
+    <div class="row">
+      <label for="fontSelect">Font (Top)</label>
+    </div>
+    <div class="row">
+      <select id="fontSelect" aria-label="Top font selection">
+        <option value="Changa" selected>Changa</option>
+        <option value="Fira Mono">Fira Mono</option>
+      </select>
+    </div>
+    <div class="slider-row">
+      <label for="fontSize">Font Size (Top)</label>
+      <input id="fontSize" type="range" min="30" max="316" value="316" aria-label="Top font size slider">
+      <span id="fontSizeVal">316</span>
+    </div>
+    <div class="row">
+      <label for="text2">Hidden Text (Bottom, supports ASCII art)</label>
+    </div>
+    <div class="row">
+      <textarea id="text2" maxlength="1000" placeholder="Enter second line or ASCII art" aria-label="Bottom hidden text input">Upgrade your cyber life</textarea>
+    </div>
+    <div class="row">
+      <label for="fontSelect2">Font (Bottom)</label>
+    </div>
+    <div class="row">
+      <select id="fontSelect2" aria-label="Bottom font selection">
+        <option value="Changa">Changa</option>
+        <option value="Fira Mono" selected>Fira Mono</option>
+      </select>
+    </div>
+    <div class="slider-row">
+      <label for="fontSize2">Font Size (Bottom)</label>
+      <input id="fontSize2" type="range" min="30" max="316" value="42" aria-label="Bottom font size slider">
+      <span id="fontSizeVal2">42</span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label for="shapeSelect">Texture Shape</label>
+    </div>
+    <div class="row">
+      <select id="shapeSelect" aria-label="Texture shape selection">
+        <option value="square" selected>Square</option>
+        <option value="circle">Circle</option>
+        <option value="triangle">Triangle</option>
+        <option value="pentagon">Pentagon</option>
+        <option value="hexagon">Hexagon</option>
+        <option value="fractal">Fractal Tree</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="row" style="margin-top:14px" id="customTextureRow" style="display:none;">
+      <label for="customTexture">Upload Custom Texture</label>
+      <input type="file" id="customTexture" accept="image/*" aria-label="Upload custom texture">
+    </div>
+    <div class="slider-row">
+      <label for="depth">Depth</label>
+      <input id="depth" type="range" min="1" max="200" value="50" aria-label="Depth slider" title="wiggle here">
+      <span id="depthVal">50</span>
+    </div>
+    <div class="slider-row">
+      <label for="scale">Texture Scale</label>
+      <input id="scale" type="range" min="1" max="50" value="8" aria-label="Texture scale slider">
+      <span id="scaleVal">8</span>
+    </div>
+    <div class="slider-row">
+      <label for="gradientCurve">Gradient Curve</label>
+      <input id="gradientCurve" type="range" min="0.5" max="2" step="0.1" value="1.2" aria-label="Gradient curve slider">
+      <span id="gradientCurveVal">1.2</span>
+    </div>
+    <div class="slider-row">
+      <label for="repeats">Pattern Repeats (X)</label>
+      <input id="repeats" type="range" min="2" max="24" value="12" aria-label="Pattern repeats slider">
+      <span id="repeatsVal">12</span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label>Color Weights <span class="muted">(slide to adjust individual color percentages; totals 100%)</span></label>
+    </div>
+    <div id="colors"></div>
+    <div class="row" style="margin-top:14px">
+      <label for="highContrast">High Contrast Mode (Black & White)</label>
+      <input type="checkbox" id="highContrast" aria-label="High Contrast Mode" checked>
+    </div>
+    <div class="btns">
+      <button id="randomize" aria-label="Randomize color mix">Randomize Mix</button>
+      <button id="equalize" aria-label="Equalize color percentages">Equalize</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label for="seed">Random Seed (optional)</label>
+    </div>
+    <div class="row">
+      <input id="seed" type="number" min="0" placeholder="Enter a seed number" aria-label="Random seed input" />
+    </div>
+    <div class="btns">
+      <button class="primary" id="generate" aria-label="Generate stereogram">Generate</button>
+      <button id="download" disabled aria-label="Download PNG (1200x800)">Download PNG</button>
+      <button id="download8k" disabled aria-label="Download 8K PNG (7680x4320)">Download 8K PNG</button>
+    </div>
+  </section>
+  <section class="panel">
+    <canvas id="out" width="1200" height="800"></canvas>
+    <div class="small muted" style="margin-top:8px">Tip: relax your focus or look "through" the image to see the hidden text or ASCII art.</div>
+    <canvas id="depthPreview" width="1200" height="800" style="margin-top:16px;border-radius:4px;background:#000"></canvas>
+    <div class="small muted" style="margin-top:4px">Depth Preview: shows a 3D look of the hidden text or ASCII art.</div>
+  </section>
+</div>
+<footer>&copy; 2025 Cyberpunk Hardware</footer>
+<script>
+function debounce(func, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => func(...args), delay);
+  };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const PALETTE = [
+    {name: 'CPH Black', hex: '#020202'},
+    {name: 'CPH White', hex: '#FCFCFC'},
+    {name: 'CPH Green', hex: '#D1FCC4'},
+    {name: 'CPH Yellow', hex: '#FCD60E'},
+    {name: 'CPH Pink', hex: '#F5638F'},
+    {name: 'CPH Orange', hex: '#E67740'},
+    {name: 'CPH Blue', hex: '#808CFB'},
+    {name: 'CPH Slime', hex: '#CFD60E'}
+  ];
+
+  // DOM elements
+  const elColors = document.getElementById('colors');
+  const elSeed = document.getElementById('seed');
+  const elText = document.getElementById('text');
+  const elText2 = document.getElementById('text2');
+  const fontSelect = document.getElementById('fontSelect');
+  const fontSelect2 = document.getElementById('fontSelect2');
+  const fontSizeSlider = document.getElementById('fontSize');
+  const fontSizeVal = document.getElementById('fontSizeVal');
+  const fontSizeSlider2 = document.getElementById('fontSize2');
+  const fontSizeVal2 = document.getElementById('fontSizeVal2');
+  const shapeSelect = document.getElementById('shapeSelect');
+  const gradientCurveSlider = document.getElementById('gradientCurve');
+  const gradientCurveVal = document.getElementById('gradientCurveVal');
+  const repeatsSlider = document.getElementById('repeats');
+  const repeatsVal = document.getElementById('repeatsVal');
+  const customTextureInput = document.getElementById('customTexture');
+  const customTextureRow = document.getElementById('customTextureRow');
+  const btnGenerate = document.getElementById('generate');
+  const btnDownload = document.getElementById('download');
+  const btnDownload8k = document.getElementById('download8k');
+  const btnRandomize = document.getElementById('randomize');
+  const btnEqualize = document.getElementById('equalize');
+  const highContrastCheckbox = document.getElementById('highContrast');
+  const canvasOut = document.getElementById('out');
+  const ctxOut = canvasOut && canvasOut.getContext('2d', { willReadFrequently: true });
+  const canvasPattern = document.createElement('canvas');
+  const canvasMask = document.createElement('canvas');
+  const canvasTile = document.createElement('canvas');
+  canvasPattern.width = canvasMask.width = canvasOut ? canvasOut.width : 1200;
+  canvasPattern.height = canvasMask.height = canvasOut ? canvasOut.height : 800;
+  const ctxPattern = canvasPattern.getContext('2d', { willReadFrequently: true });
+  const ctxMask = canvasMask.getContext('2d', { willReadFrequently: true });
+  const ctxTile = canvasTile.getContext('2d', { willReadFrequently: true });
+  const depthSlider = document.getElementById('depth');
+  const depthVal = document.getElementById('depthVal');
+  const scaleSlider = document.getElementById('scale');
+  const scaleVal = document.getElementById('scaleVal');
+
+  // Validate DOM elements
+  const missingElements = [];
+  if (!elColors) missingElements.push('elColors');
+  if (!elSeed) missingElements.push('elSeed');
+  if (!elText) missingElements.push('elText');
+  if (!elText2) missingElements.push('elText2');
+  if (!fontSelect) missingElements.push('fontSelect');
+  if (!fontSelect2) missingElements.push('fontSelect2');
+  if (!fontSizeSlider) missingElements.push('fontSizeSlider');
+  if (!fontSizeVal) missingElements.push('fontSizeVal');
+  if (!fontSizeSlider2) missingElements.push('fontSizeSlider2');
+  if (!fontSizeVal2) missingElements.push('fontSizeVal2');
+  if (!shapeSelect) missingElements.push('shapeSelect');
+  if (!gradientCurveSlider) missingElements.push('gradientCurveSlider');
+  if (!gradientCurveVal) missingElements.push('gradientCurveVal');
+  if (!repeatsSlider) missingElements.push('repeatsSlider');
+  if (!repeatsVal) missingElements.push('repeatsVal');
+  if (!customTextureInput) missingElements.push('customTextureInput');
+  if (!customTextureRow) missingElements.push('customTextureRow');
+  if (!btnGenerate) missingElements.push('btnGenerate');
+  if (!btnDownload) missingElements.push('btnDownload');
+  if (!btnDownload8k) missingElements.push('btnDownload8k');
+  if (!btnRandomize) missingElements.push('btnRandomize');
+  if (!btnEqualize) missingElements.push('btnEqualize');
+  if (!highContrastCheckbox) missingElements.push('highContrastCheckbox');
+  if (!canvasOut) missingElements.push('canvasOut');
+  if (!ctxOut) missingElements.push('ctxOut');
+  if (!ctxPattern) missingElements.push('ctxPattern');
+  if (!ctxMask) missingElements.push('ctxMask');
+  if (!ctxTile) missingElements.push('ctxTile');
+  if (!depthSlider) missingElements.push('depthSlider');
+  if (!depthVal) missingElements.push('depthVal');
+  if (!scaleSlider) missingElements.push('scaleSlider');
+  if (!scaleVal) missingElements.push('scaleVal');
+  if (missingElements.length > 0) {
+    console.error('Missing DOM elements:', missingElements.join(', '));
+    return;
+  }
+
+  // Utility functions
+  const hexToRgb = (hex) => {
+    try {
+      const m = hex.replace('#', '');
+      return [
+        parseInt(m.slice(0, 2), 16),
+        parseInt(m.slice(2, 4), 16),
+        parseInt(m.slice(4, 6), 16)
+      ];
+    } catch (e) {
+      console.error(`Failed to parse hex color ${hex}:`, e);
+      return [0, 0, 0];
+    }
+  };
+
+  const mulberry32 = (a) => {
+    return () => {
+      let t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  };
+
+  const randomDirichlet = (n) => {
+    try {
+      const arr = Array.from({length: n}, () => Math.random());
+      const s = arr.reduce((a, b) => a + b, 0);
+      return arr.map(v => Math.max(0.01, (v / s) * 100));
+    } catch (e) {
+      console.error('Error in randomDirichlet:', e);
+      return Array(n).fill(100 / n);
+    }
+  };
+
+  const lerpColor = (color1, color2, t) => {
+    return [
+      Math.round(color1[0] + (color2[0] - color1[0]) * t),
+      Math.round(color1[1] + (color2[1] - color1[1]) * t),
+      Math.round(color1[2] + (color2[2] - color1[2]) * t)
+    ];
+  };
+
+  function drawFractalTree(ctx, x, y, len, angle, depth, maxDepth, color, scale) {
+    if (depth > maxDepth) return;
+    const x2 = x + len * Math.cos(angle);
+    const y2 = y + len * Math.sin(angle);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+    ctx.lineWidth = scale / 5;
+    ctx.stroke();
+
+    const newLen = len * 0.7;
+    drawFractalTree(ctx, x2, y2, newLen, angle - Math.PI / 6, depth + 1, maxDepth, color, scale);
+    drawFractalTree(ctx, x2, y2, newLen, angle + Math.PI / 6, depth + 1, maxDepth, color, scale);
+  }
+
+  // State management
+  const state = {
+    colorPercents: Array(PALETTE.length).fill(100 / PALETTE.length),
+    depth: 50,
+    scale: 8,
+    fontSize: 316,
+    font: 'Changa',
+    text2: 'Upgrade your cyber life',
+    fontSize2: 42,
+    font2: 'Fira Mono',
+    shape: 'square',
+    gradientCurve: 1.2,
+    highContrast: true,
+    repeats: 12,
+    customImage: null
+  };
+
+  // Compute percentages for all colors
+  function getColorPercents() {
+    try {
+      if (state.highContrast) {
+        return [50, 50, 0, 0, 0, 0, 0, 0];
+      }
+      return state.colorPercents;
+    } catch (e) {
+      console.error('Error in getColorPercents:', e);
+      return Array(PALETTE.length).fill(100 / PALETTE.length);
+    }
+  }
+
+  // Render color sliders
+  function renderColorInputs() {
+    try {
+      elColors.innerHTML = '';
+      const fixedPercents = [50, 50, 0, 0, 0, 0, 0, 0];
+      PALETTE.forEach((color, i) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const swatch = document.createElement('div');
+        swatch.className = 'swatch';
+        swatch.style.background = color.hex;
+        const sliderRow = document.createElement('div');
+        sliderRow.className = 'slider-row';
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = 0;
+        input.max = 100;
+        input.step = 1;
+        input.setAttribute('aria-label', `${color.name} percentage`);
+        const label = document.createElement('span');
+        if (state.highContrast) {
+          input.disabled = true;
+          input.value = fixedPercents[i];
+          label.textContent = `${color.name} ${fixedPercents[i]}%`;
+        } else {
+          input.disabled = false;
+          input.value = state.colorPercents[i];
+          label.textContent = `${color.name} ${Math.round(state.colorPercents[i])}%`;
+        }
+        input.dataset.index = i;
+        input.addEventListener('input', debounce((e) => {
+          if (state.highContrast) return; // Prevent changes in high contrast mode
+          const index = parseInt(e.target.dataset.index);
+          const oldValue = state.colorPercents[index];
+          let newValue = parseFloat(e.target.value);
+          if (newValue < 0) newValue = 0;
+          if (newValue > 100) newValue = 100;
+          const oldRemaining = 100 - oldValue;
+          const remaining = 100 - newValue;
+          state.colorPercents[index] = newValue;
+          if (oldRemaining > 0 && remaining >= 0) {
+            const factor = remaining / oldRemaining;
+            for (let j = 0; j < PALETTE.length; j++) {
+              if (j !== index) {
+                state.colorPercents[j] *= factor;
+              }
+            }
+          }
+          renderColorInputs(); // Update all sliders and labels
+          drawPattern(getColorPercents(), elSeed);
+          generateStereogram();
+          drawDepthPreview();
+        }, 300));
+        sliderRow.appendChild(input);
+        sliderRow.appendChild(label);
+        row.appendChild(swatch);
+        row.appendChild(sliderRow);
+        elColors.appendChild(row);
+      });
+    } catch (e) {
+      console.error('Error in renderColorInputs:', e);
+    }
+  }
+
+  // Draw texture shapes
+  function drawShape(ctx, x, y, size, color, shape) {
+    try {
+      ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+      ctx.beginPath();
+      if (shape === 'circle') {
+        ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      } else if (shape === 'triangle') {
+        ctx.moveTo(x + size / 2, y);
+        ctx.lineTo(x + size, y + size);
+        ctx.lineTo(x, y + size);
+        ctx.closePath();
+      } else if (shape === 'pentagon') {
+        const cx = x + size / 2, cy = y + size / 2, r = size / 2;
+        for (let i = 0; i < 5; i++) {
+          const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+          ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+        }
+        ctx.closePath();
+      } else if (shape === 'hexagon') {
+        const cx = x + size / 2, cy = y + size / 2, r = size / 2;
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI * 2 * i) / 6 - Math.PI / 2;
+          ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+        }
+        ctx.closePath();
+      } else {
+        ctx.rect(x, y, size, size);
+      }
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } catch (e) {
+      console.error('Error in drawShape:', e);
+    }
+  }
+
+  // Draw default grid texture
+  function drawDefaultTexture(ctx, width, height) {
+    try {
+      ctx.fillStyle = '#333333';
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = '#808080';
+      ctx.lineWidth = 2;
+      const gridSize = Math.min(width, height) / 10;
+      for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    } catch (e) {
+      console.error('Error in drawDefaultTexture:', e);
+    }
+  }
+
+  // Draw pattern with repetition
+  function drawPattern(percents, seed, width = 1200, height = 800) {
+    try {
+      const dist = buildDistribution(percents);
+      const rng = mulberry32(seed && seed.value !== '' ? Number(seed.value) : 0);
+      canvasPattern.width = width;
+      canvasPattern.height = height;
+      ctxPattern.clearRect(0, 0, width, height);
+
+      const repeatX = Math.max(2, Math.min(24, state.repeats));
+      const repeatY = Math.round(repeatX / 2);
+      const tileWidth = width / repeatX;
+      const tileHeight = height / repeatY;
+      canvasTile.width = tileWidth;
+      canvasTile.height = tileHeight;
+      ctxTile.clearRect(0, 0, tileWidth, tileHeight);
+
+      const scale = Math.max(1, Math.min(50, state.scale));
+      const blockW = Math.ceil(tileWidth / scale);
+      const blockH = Math.ceil(tileHeight / scale);
+
+      if (state.shape === 'fractal') {
+        const maxDepth = 5;
+        for (let by = 0; by < blockH; by++) {
+          for (let bx = 0; bx < blockW; bx++) {
+            const x = bx * scale + scale / 2;
+            const y = by * scale + scale;
+            const color = pickColor(rng, dist);
+            drawFractalTree(ctxTile, x, y, scale * 0.8, -Math.PI / 2, 0, maxDepth, color, scale);
+          }
+        }
+      } else if (state.shape === 'custom') {
+        if (state.customImage) {
+          ctxTile.drawImage(state.customImage, 0, 0, tileWidth, tileHeight);
+        } else {
+          drawDefaultTexture(ctxTile, tileWidth, tileHeight);
+        }
+      } else {
+        for (let by = 0; by < blockH; by++) {
+          for (let bx = 0; bx < blockW; bx++) {
+            const color = pickColor(rng, dist);
+            const x = bx * scale;
+            const y = by * scale;
+            drawShape(ctxTile, x, y, scale, color, state.shape);
+          }
+        }
+      }
+
+      for (let ty = 0; ty < repeatY; ty++) {
+        for (let tx = 0; tx < repeatX; tx++) {
+          ctxPattern.drawImage(canvasTile, tx * tileWidth, ty * tileHeight);
+        }
+      }
+    } catch (e) {
+      console.error('Error in drawPattern:', e);
+    }
+  }
+
+  async function drawMask(text1, text2, width = 1200, height = 800) {
+    try {
+      canvasMask.width = width;
+      canvasMask.height = height;
+      ctxMask.clearRect(0, 0, width, height);
+      ctxMask.fillStyle = 'black';
+      ctxMask.fillRect(0, 0, width, height);
+      ctxMask.fillStyle = 'white';
+      ctxMask.textBaseline = 'middle';
+      ctxMask.textAlign = 'center';
+
+      let fontSize = Math.min(state.fontSize, 316);
+      let fontSize2 = Math.min(state.fontSize2, 316);
+
+      const fontsToLoad = [];
+      if (text1) fontsToLoad.push(`700 ${fontSize}px "${state.font}"`);
+      if (text2) fontsToLoad.push(`700 ${fontSize2}px "${state.font2}"`);
+      if (fontsToLoad.length > 0) {
+        try {
+          await Promise.all(fontsToLoad.map(font => document.fonts.load(font)));
+        } catch (e) {
+          console.warn(`Font loading failed: ${e.message}. Using fallback.`);
+          state.font = state.font2 = 'sans-serif';
+        }
+      }
+
+      const offset = width === 1200 ? 50 : 150;
+      const lineHeightFactor = 1.2;
+
+      ctxMask.shadowBlur = state.gradientCurve * 20; // Puffy effect scaled by gradientCurve
+      ctxMask.shadowColor = 'white';
+      ctxMask.shadowOffsetX = 0;
+      ctxMask.shadowOffsetY = 0;
+
+      const topText = text1.trim();
+      const bottomText = text2.trim();
+
+      let topHeight = 0;
+      let bottomHeight = 0;
+
+      if (topText) {
+        ctxMask.font = `700 ${fontSize}px "${state.font}", sans-serif`;
+        const metrics = ctxMask.measureText(topText);
+        while (fontSize > 30 && metrics.width > width * 0.9) {
+          fontSize -= 6;
+          ctxMask.font = `700 ${fontSize}px "${state.font}", sans-serif`;
+        }
+        topHeight = fontSize * lineHeightFactor;
+      }
+
+      if (bottomText) {
+        const lines = bottomText.split('\n').filter(line => line.trim());
+        ctxMask.font = `700 ${fontSize2}px "${state.font2}", sans-serif`;
+        let maxWidth = 0;
+        lines.forEach(line => {
+          const metrics = ctxMask.measureText(line);
+          maxWidth = Math.max(maxWidth, metrics.width);
+        });
+        while (fontSize2 > 30 && maxWidth > width * 0.9) {
+          fontSize2 -= 6;
+          ctxMask.font = `700 ${fontSize2}px "${state.font2}", sans-serif`;
+          maxWidth = 0;
+          lines.forEach(line => {
+            const metrics = ctxMask.measureText(line);
+            maxWidth = Math.max(maxWidth, metrics.width);
+          });
+        }
+        bottomHeight = lines.length * fontSize2 * lineHeightFactor;
+      }
+
+      let minOffset = 0;
+      if (topText && bottomText) {
+        minOffset = (topHeight / 2 + fontSize2 * lineHeightFactor / 2);
+      }
+      const effectiveOffset = Math.max(offset, minOffset);
+
+      let y1 = height / 2;
+      let startY = height / 2;
+
+      if (topText && bottomText) {
+        y1 = height / 2 - effectiveOffset / 2 - bottomHeight / 2;
+        startY = height / 2 + effectiveOffset / 2 - bottomHeight / 2 + fontSize2 * lineHeightFactor / 2;
+      } else if (topText) {
+        y1 = height / 2;
+      } else if (bottomText) {
+        startY = height / 2 - bottomHeight / 2 + fontSize2 * lineHeightFactor / 2;
+      }
+
+      if (topText) {
+        ctxMask.font = `700 ${fontSize}px "${state.font}", sans-serif`;
+        ctxMask.fillText(topText, width / 2, y1);
+      }
+
+      if (bottomText) {
+        const lines = bottomText.split('\n').filter(line => line.trim());
+        ctxMask.font = `700 ${fontSize2}px "${state.font2}", sans-serif`;
+        lines.forEach((line, i) => {
+          if (line.trim()) {
+            const y = startY + i * fontSize2 * lineHeightFactor;
+            ctxMask.fillText(line, width / 2, y);
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error in drawMask:', e);
+    }
+  }
+
+  function buildDistribution(percents) {
+    try {
+      const total = percents.reduce((a, b) => a + b, 0) || 1;
+      let cum = 0;
+      return percents.map((p, i) => {
+        const rgb = hexToRgb(PALETTE[i].hex);
+        cum += (p / total);
+        return { threshold: cum, rgb };
+      });
+    } catch (e) {
+      console.error('Error in buildDistribution:', e);
+      return PALETTE.map((_, i) => ({
+        threshold: (i + 1) / PALETTE.length,
+        rgb: hexToRgb(PALETTE[i].hex)
+      }));
+    }
+  }
+
+  function pickColor(rand, dist) {
+    try {
+      const r = rand();
+      for (let i = 0; i < dist.length; i++) {
+        if (r <= dist[i].threshold) return dist[i].rgb;
+      }
+      return dist[dist.length - 1].rgb;
+    } catch (e) {
+      console.error('Error in pickColor:', e);
+      return [0, 0, 0];
+    }
+  }
+
+  function generateStereogram(width = 1200, height = 800, targetCtx = ctxOut) {
+    try {
+      targetCtx.clearRect(0, 0, width, height);
+      const shift = state.depth;
+      const patt = ctxPattern.getImageData(0, 0, width, height);
+      const mask = ctxMask.getImageData(0, 0, width, height);
+      const out = targetCtx.createImageData(width, height);
+      let i = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const mi = (y * width + x) * 4;
+          const gray = mask.data[mi];
+          const dx = Math.round((gray / 255) * shift);
+          const sx = (x - dx + width) % width;
+          const si = (y * width + sx) * 4;
+          out.data[i++] = patt.data[si];
+          out.data[i++] = patt.data[si + 1];
+          out.data[i++] = patt.data[si + 2];
+          out.data[i++] = 255;
+        }
+      }
+      targetCtx.putImageData(out, 0, 0);
+    } catch (e) {
+      console.error('Error in generateStereogram:', e);
+    }
+  }
+
+  function drawDepthPreview() {
+    try {
+      const dp = document.getElementById('depthPreview');
+      const ctxDP = dp && dp.getContext('2d');
+      if (!ctxDP) throw new Error('Depth preview canvas context not available');
+      ctxDP.clearRect(0, 0, canvasMask.width, canvasMask.height);
+      const mask = ctxMask.getImageData(0, 0, canvasMask.width, canvasMask.height);
+      const out = ctxDP.createImageData(canvasMask.width, canvasMask.height);
+      const colorStart = hexToRgb(PALETTE[0].hex);
+      const colorEnd = hexToRgb(PALETTE[2].hex);
+      for (let y = 0; y < canvasMask.height; y++) {
+        for (let x = 0; x < canvasMask.width; x++) {
+          const i = (y * canvasMask.width + x) * 4;
+          const gray = mask.data[i];
+          const t = Math.pow(gray / 255, state.gradientCurve);
+          const [r, g, b] = lerpColor(colorStart, colorEnd, t);
+          out.data[i] = r;
+          out.data[i + 1] = g;
+          out.data[i + 2] = b;
+          out.data[i + 3] = 255;
+        }
+      }
+      ctxDP.putImageData(out, 0, 0);
+    } catch (e) {
+      console.error('Error in drawDepthPreview:', e);
+    }
+  }
+
+  async function generate() {
+    try {
+      btnGenerate.disabled = true;
+      btnDownload.disabled = true;
+      btnDownload8k.disabled = true;
+      await drawPattern(getColorPercents(), elSeed);
+      await drawMask(elText.value.trim(), elText2.value.trim());
+      generateStereogram();
+      drawDepthPreview();
+      renderColorInputs();
+    } catch (e) {
+      console.error('Error in generate:', e);
+    } finally {
+      btnGenerate.disabled = false;
+      btnDownload.disabled = false;
+      btnDownload8k.disabled = false;
+    }
+  }
+
+  function downloadPng() {
+    try {
+      const url = canvasOut.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `magic_eye_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error('Error in downloadPng:', e);
+    }
+  }
+
+  async function downloadPng8k() {
+    try {
+      const canvas8k = document.createElement('canvas');
+      canvas8k.width = 7680;
+      canvas8k.height = 4320;
+      const ctx8k = canvas8k.getContext('2d', { willReadFrequently: true });
+      if (!ctx8k) throw new Error('Failed to create 8K canvas context');
+
+      await drawPattern(getColorPercents(), elSeed, 7680, 4320);
+      await drawMask(elText.value.trim(), elText2.value.trim(), 7680, 4320);
+      generateStereogram(7680, 4320, ctx8k);
+
+      const url = canvas8k.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `magic_eye_8k_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      canvasPattern.width = canvasMask.width = canvasOut.width;
+      canvasPattern.height = canvasMask.height = canvasOut.height;
+    } catch (e) {
+      console.error('Error in downloadPng8k:', e);
+    }
+  }
+
+  // Event listeners
+  try {
+    btnDownload.addEventListener('click', downloadPng);
+    btnDownload8k.addEventListener('click', downloadPng8k);
+    btnGenerate.addEventListener('click', generate);
+    btnRandomize.addEventListener('click', () => {
+      state.colorPercents = randomDirichlet(PALETTE.length);
+      generate();
+    });
+    btnEqualize.addEventListener('click', () => {
+      state.colorPercents = Array(PALETTE.length).fill(100 / PALETTE.length);
+      generate();
+    });
+    highContrastCheckbox.addEventListener('change', () => {
+      state.highContrast = highContrastCheckbox.checked;
+      generate();
+    });
+    canvasOut.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        canvasOut.requestFullscreen().catch(err => console.warn('Fullscreen failed:', err));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    depthSlider.addEventListener('input', debounce(() => {
+      state.depth = parseInt(depthSlider.value);
+      depthVal.textContent = state.depth;
+      generateStereogram();
+      drawDepthPreview();
+    }, 300));
+    scaleSlider.addEventListener('input', debounce(() => {
+      state.scale = parseInt(scaleSlider.value);
+      scaleVal.textContent = state.scale;
+      generate();
+    }, 300));
+    gradientCurveSlider.addEventListener('input', debounce(() => {
+      state.gradientCurve = parseFloat(gradientCurveSlider.value);
+      gradientCurveVal.textContent = state.gradientCurve.toFixed(1);
+      generate();
+    }, 300));
+    repeatsSlider.addEventListener('input', debounce(() => {
+      state.repeats = parseInt(repeatsSlider.value);
+      repeatsVal.textContent = state.repeats;
+      generate();
+    }, 300));
+    fontSelect.addEventListener('change', () => {
+      state.font = fontSelect.value;
+      generate();
+    });
+    fontSelect2.addEventListener('change', () => {
+      state.font2 = fontSelect2.value;
+      generate();
+    });
+    shapeSelect.addEventListener('change', () => {
+      state.shape = shapeSelect.value;
+      if (state.shape === 'custom') {
+        customTextureRow.style.display = 'block';
+      } else {
+        customTextureRow.style.display = 'none';
+      }
+      generate();
+    });
+    elText.addEventListener('input', debounce(() => {
+      generate();
+    }, 300));
+    elText2.addEventListener('input', debounce(() => {
+      generate();
+    }, 300));
+    fontSizeSlider.addEventListener('input', debounce(() => {
+      state.fontSize = parseInt(fontSizeSlider.value);
+      fontSizeVal.textContent = state.fontSize;
+      generate();
+    }, 300));
+    fontSizeSlider2.addEventListener('input', debounce(() => {
+      state.fontSize2 = parseInt(fontSizeSlider2.value);
+      fontSizeVal2.textContent = state.fontSize2;
+      generate();
+    }, 300));
+    customTextureInput.addEventListener('change', () => {
+      const file = customTextureInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            state.customImage = img;
+            generate();
+          };
+          img.onerror = () => {
+            console.error('Failed to load custom texture image');
+            state.customImage = null;
+            generate();
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = () => {
+          console.error('Failed to read custom texture file');
+          state.customImage = null;
+          generate();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        state.customImage = null;
+        generate();
+      }
+    });
+  } catch (e) {
+    console.error('Error setting up event listeners:', e);
+  }
+
+  // Initialize
+  try {
+    renderColorInputs();
+    highContrastCheckbox.checked = state.highContrast;
+    customTextureRow.style.display = 'none';
+    generate();
+  } catch (e) {
+    console.error('Error during initialization:', e);
+  }
+});
+</script>
+</body>
+</html>

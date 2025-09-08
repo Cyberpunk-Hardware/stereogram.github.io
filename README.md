@@ -1,2 +1,2 @@
 # stereogram.github.io
-website for Cyberpunk Hardware stereo gram generator
+website for Cyberpunk Hardware stereogram generator
